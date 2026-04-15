@@ -84,6 +84,11 @@ void BddMgrV::reset() {
     _supports.clear();
     _bddArr.clear();
     _bddMap.clear();
+    _isFixed   = false;
+    _initState = BddNodeV();
+    _tr        = BddNodeV();
+    _tri       = BddNodeV();
+    _reachStates.clear();
     BddHash::iterator bi = _uniqueTable.begin();
     for (; bi != _uniqueTable.end(); ++bi)
         delete (*bi).second;
