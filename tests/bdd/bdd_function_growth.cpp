@@ -46,29 +46,19 @@ countNodes(const BddVec& roots) {
 
 template <class BuildFn>
 size_t
-runInFreshMgr(size_t numSupports, BuildFn&& buildFn) {
-    if (bddMgrV) {
-        delete bddMgrV;
-        bddMgrV = nullptr;
-    }
-    bddMgrV = new BddMgrV(numSupports, 50021, 200003);
-
-    const size_t nodes = buildFn();
-
-    delete bddMgrV;
-    bddMgrV = nullptr;
-    return nodes;
+runExperiment(BuildFn&& buildFn) {
+    return buildFn();
 }
 
 AdderVars
-buildInterleavedAdderVars(int n) {
+buildInterleavedAdderVars(int n, int maxSupports) {
     AdderVars vars;
     vars.a.resize(n);
     vars.b.resize(n);
     for (int i = 0; i < n; ++i) {
         // Top variable order: a0, b0, a1, b1, ...
-        vars.a[i] = bddMgrV->getSupport(static_cast<size_t>(2 * n - (2 * i)));
-        vars.b[i] = bddMgrV->getSupport(static_cast<size_t>(2 * n - (2 * i + 1)));
+        vars.a[i] = bddMgrV->getSupport(static_cast<size_t>(maxSupports - (2 * i)));
+        vars.b[i] = bddMgrV->getSupport(static_cast<size_t>(maxSupports - (2 * i + 1)));
     }
     return vars;
 }
@@ -106,11 +96,11 @@ multiplyWords(const BddVec& lhs, const BddVec& rhs) {
 }
 
 BddVec
-buildLinearVars(int n) {
+buildLinearVars(int n, int maxSupports) {
     BddVec vars;
     vars.reserve(n);
     for (int i = 0; i < n; ++i)
-        vars.push_back(bddMgrV->getSupport(static_cast<size_t>(n - i)));
+        vars.push_back(bddMgrV->getSupport(static_cast<size_t>(maxSupports - i)));
     return vars;
 }
 
@@ -153,9 +143,9 @@ buildRandomLogic(const BddVec& vars, int n, uint32_t seed) {
 }
 
 size_t
-measureAdder(int n, const ExperimentConfig& cfg) {
-    return runInFreshMgr(static_cast<size_t>(2 * n), [&]() {
-        const AdderVars vars = buildInterleavedAdderVars(n);
+measureAdder(int n, const ExperimentConfig& cfg, int maxSupports) {
+    return runExperiment([&]() {
+        const AdderVars vars = buildInterleavedAdderVars(n, maxSupports);
         BddVec outputs       = addWords(vars.a, vars.b);  // sum[0..n-1], carry out
         if (cfg.dumpDot) {
             std::ofstream ofs(cfg.dotDir + "/adder_cout_n" + std::to_string(n) + ".dot");
@@ -166,9 +156,9 @@ measureAdder(int n, const ExperimentConfig& cfg) {
 }
 
 size_t
-measureMultiplier(int n, const ExperimentConfig& cfg) {
-    return runInFreshMgr(static_cast<size_t>(2 * n), [&]() {
-        const AdderVars vars = buildInterleavedAdderVars(n);
+measureMultiplier(int n, const ExperimentConfig& cfg, int maxSupports) {
+    return runExperiment([&]() {
+        const AdderVars vars = buildInterleavedAdderVars(n, maxSupports);
         BddVec outputs       = multiplyWords(vars.a, vars.b);  // product bits
         outputs.resize(static_cast<size_t>(2 * n), BddNodeV::_zero);
         if (cfg.dumpDot) {
@@ -180,9 +170,9 @@ measureMultiplier(int n, const ExperimentConfig& cfg) {
 }
 
 size_t
-measureCounterRelation(int n, const ExperimentConfig& cfg) {
-    return runInFreshMgr(static_cast<size_t>(2 * n), [&]() {
-        AdderVars vars = buildInterleavedAdderVars(n);
+measureCounterRelation(int n, const ExperimentConfig& cfg, int maxSupports) {
+    return runExperiment([&]() {
+        AdderVars vars = buildInterleavedAdderVars(n, maxSupports);
         BddNodeV rel   = BddNodeV::_one;
         BddNodeV carry = BddNodeV::_one;  // +1
         for (int i = 0; i < n; ++i) {
@@ -199,9 +189,9 @@ measureCounterRelation(int n, const ExperimentConfig& cfg) {
 }
 
 size_t
-measureParity(int n, const ExperimentConfig& cfg) {
-    return runInFreshMgr(static_cast<size_t>(n), [&]() {
-        const BddVec vars = buildLinearVars(n);
+measureParity(int n, const ExperimentConfig& cfg, int maxSupports) {
+    return runExperiment([&]() {
+        const BddVec vars = buildLinearVars(n, maxSupports);
         const BddNodeV p  = buildParity(vars);
         if (cfg.dumpDot) {
             std::ofstream ofs(cfg.dotDir + "/parity_n" + std::to_string(n) + ".dot");
@@ -212,9 +202,9 @@ measureParity(int n, const ExperimentConfig& cfg) {
 }
 
 size_t
-measureRandomLogic(int n, const ExperimentConfig& cfg) {
-    return runInFreshMgr(static_cast<size_t>(n), [&]() {
-        const BddVec vars = buildLinearVars(n);
+measureRandomLogic(int n, const ExperimentConfig& cfg, int maxSupports) {
+    return runExperiment([&]() {
+        const BddVec vars = buildLinearVars(n, maxSupports);
         const BddNodeV r  = buildRandomLogic(vars, n, 0xC0FFEEu + static_cast<uint32_t>(n));
         if (cfg.dumpDot) {
             std::ofstream ofs(cfg.dotDir + "/random_logic_n" + std::to_string(n) + ".dot");
@@ -250,6 +240,8 @@ parseArgs(int argc, char** argv) {
 int
 main(int argc, char** argv) {
     const ExperimentConfig cfg = parseArgs(argc, argv);
+    const int maxSupports      = 256;
+    bddMgrV                    = new BddMgrV(static_cast<size_t>(maxSupports), 50021, 200003);
 
     std::vector<std::pair<int, size_t>> adder;
     std::vector<std::pair<int, size_t>> multiplier;
@@ -258,19 +250,19 @@ main(int argc, char** argv) {
     std::vector<std::pair<int, size_t>> randomLogic;
 
     for (int n = 2; n <= 24; n += 2)
-        adder.emplace_back(n, measureAdder(n, cfg));
+        adder.emplace_back(n, measureAdder(n, cfg, maxSupports));
 
     for (int n = 2; n <= 7; ++n)
-        multiplier.emplace_back(n, measureMultiplier(n, cfg));
+        multiplier.emplace_back(n, measureMultiplier(n, cfg, maxSupports));
 
     for (int n = 2; n <= 24; n += 2)
-        counter.emplace_back(n, measureCounterRelation(n, cfg));
+        counter.emplace_back(n, measureCounterRelation(n, cfg, maxSupports));
 
     for (int n = 4; n <= 64; n += 4)
-        parity.emplace_back(n, measureParity(n, cfg));
+        parity.emplace_back(n, measureParity(n, cfg, maxSupports));
 
     for (int n = 4; n <= 24; n += 2)
-        randomLogic.emplace_back(n, measureRandomLogic(n, cfg));
+        randomLogic.emplace_back(n, measureRandomLogic(n, cfg, maxSupports));
 
     std::cout << "BDD node-growth experiment (ROBDD)\n";
     std::cout << "variable order: interleaved LSB-first for arithmetic/counter; linear for parity/random\n";
