@@ -18,6 +18,7 @@ namespace {
 struct ExperimentConfig {
     bool dumpDot     = false;
     std::string dotDir;
+    bool valid       = true;
 };
 
 struct AdderVars {
@@ -227,9 +228,18 @@ parseArgs(int argc, char** argv) {
     ExperimentConfig cfg;
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
-        if (arg == "--dump-dot" && i + 1 < argc) {
+        if (arg == "--dump-dot") {
+            if (i + 1 >= argc) {
+                std::cerr << "error: --dump-dot requires a directory path\n";
+                cfg.valid = false;
+                return cfg;
+            }
             cfg.dumpDot = true;
             cfg.dotDir  = argv[++i];
+        } else {
+            std::cerr << "error: unknown option \"" << arg << "\"\n";
+            cfg.valid = false;
+            return cfg;
         }
     }
     return cfg;
@@ -240,7 +250,14 @@ parseArgs(int argc, char** argv) {
 int
 main(int argc, char** argv) {
     const ExperimentConfig cfg = parseArgs(argc, argv);
+    if (!cfg.valid) {
+        std::cerr << "usage: " << argv[0] << " [--dump-dot <dir>]\n";
+        return 1;
+    }
     const int maxSupports      = 256;
+    // Keep one manager alive for the whole process lifetime. This BDD
+    // implementation uses static BddNodeV objects that reference manager-owned
+    // nodes during global destruction, so explicit teardown can be unsafe.
     bddMgrV                    = new BddMgrV(static_cast<size_t>(maxSupports), 50021, 200003);
 
     std::vector<std::pair<int, size_t>> adder;
