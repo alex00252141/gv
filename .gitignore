@@ -50,6 +50,7 @@ compile_commands.json
 *.txt
 *.json
 *.history
+!designs/SoCV/vending/vending-bdd-*.v
 
 # local traffic test artifacts
 traffic.*

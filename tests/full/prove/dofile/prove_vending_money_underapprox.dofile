@@ -1,0 +1,10 @@
+cirread -v ./designs/SoCV/vending/vending-bdd-money-underapprox.v
+breset 800 4001 12011
+bsetorder -file
+bcons -all
+set system vrf
+pinit init
+ptrans tri tr
+pimage -n 20
+pcheckp -o 0
+q -f
