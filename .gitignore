@@ -47,6 +47,8 @@ compile_commands.json
 # design and log files
 *.aig
 *.v
+!designs/SoCV/vending/vending_ln.v
+!testbench/vending_ln_tb.v
 *.txt
 *.json
 *.history
