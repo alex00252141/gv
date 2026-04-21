@@ -38,6 +38,25 @@ Additionally, checker enforces transaction-level value conservation on every `SE
 - refund case (`itemTypeOut == ITEM_NONE`): refunded value == inserted value
 - success case: `change value + item cost == inserted value`
 
+## 2.1) Embedded RTL assertions (internal visibility)
+
+The design also contains a non-synthesis assertion block (guarded by ``ifndef SYNTHESIS``)
+to catch internal bugs earlier than output-only checking:
+
+- legal encoding / no-X checks for key state and data signals
+- reset-value checks
+- state transition protocol checks (`ON -> BUSY -> OFF -> ON`)
+- request-capture integrity checks on accepted requests
+- quiescent output checks in `SERVICE_ON` and `SERVICE_BUSY`
+- value-conservation and denomination-conservation checks in `SERVICE_OFF`
+
+These assertions are simulation-time checks and do not alter synthesized logic.
+
+Optional GV-style hook:
+
+- compile with ``define VENDING_ASSERT_PO`` to expose `assertionFail` as an output pin.
+- this allows tools that reason through PO visibility to monitor assertion status.
+
 ## 3) Reproduce
 
 Compile:
@@ -53,3 +72,20 @@ Run one regression:
 Expected checker output:
 
 - `CHECK_PASS cycles=<N>`
+
+## 4) Learning notes (assertion exercise reflection)
+
+- **Was it easy to write assertions?**  
+  Moderately easy for high-level protocol rules (state encodings and transitions), but harder for
+  request-capture and denomination-level conservation because those need internal history/context.
+  I had to add explicit previous-cycle sampled signals in the assertion block for robust checks.
+
+- **Did assertions help reveal bugs?**  
+  Yes, they exposed potential **verification holes** that output-only checking can miss:
+  weak upper-bound inventory checks (`<=`) and missing exact denomination checks in refund/success paths.
+  Tightening assertions to exact conservation relations closed these holes.
+
+- **Did I need to revise RTL and re-verify?**  
+  The core datapath/behavioral RTL did not require functional changes, but the design file was revised
+  to include a stronger internal assertion suite (including X-detection and request-capture integrity).
+  After adding assertions, I re-ran directed and multi-seed random regressions; all checks passed.
