@@ -49,6 +49,7 @@ compile_commands.json
 *.v
 !designs/SoCV/vending/vending_ln.v
 !designs/SoCV/vending/vending_ln_bdd_abs.v
+!designs/SoCV/vending/vending_ln_bdd_abs2.v
 !testbench/vending_ln_tb.v
 *.txt
 *.json
