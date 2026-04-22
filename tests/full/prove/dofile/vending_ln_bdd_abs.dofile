@@ -1,0 +1,15 @@
+cirread -v ./designs/SoCV/vending/vending_ln_bdd_abs.v
+breset 12000 40009 70001
+bsetorder -file
+bcons -all
+set system vrf
+pinit init
+ptrans tri tr
+pimage -n 60
+pcheckp -o 0
+pcheckp -o 1
+pcheckp -o 2
+pcheckp -o 3
+pcheckp -o 4
+pcheckp -o 5
+q -f
