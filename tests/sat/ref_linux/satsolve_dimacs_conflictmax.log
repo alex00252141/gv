@@ -1,0 +1,4 @@
+setup> satsolve dimacs -file ./testbench/dimacs_sat.txt -conflictmax 0
+UNKNOWN
+setup> q -f
+

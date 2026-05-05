@@ -158,8 +158,7 @@ class SolverV
             for (int i = 0; i < learnts.size(); i++) remove(learnts[i], true);
             for (int i = 0; i < clauses.size(); i++)
                 if (clauses[i] != NULL) remove(clauses[i], true);
-            remove(propagate_tmpbin, true);
-            remove(analyze_tmpbin, true);
+            delete proof;
         }
 
         int  _conflictNum;
@@ -223,7 +222,7 @@ class SolverV
         gvlbool solveLimited(const vec<Lit>& assumps, int64_t nConflicts);
         gvlbool solveLimited(int64_t nConflicts) {
             vec<Lit> tmp;
-            return solveLimited(nConflicts);
+            return solveLimited(tmp, nConflicts);
         }
         bool solve(const vec<Lit>& assumps);
         bool solve() {

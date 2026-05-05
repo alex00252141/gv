@@ -10,6 +10,7 @@
 
 #include <cmath>
 #include <fstream>
+#include <sstream>
 
 #include "cirGate.h"
 #include "cirMgr.h"
@@ -18,10 +19,16 @@
 using namespace gv::cir;
 using gv::sat::MinisatMgr;
 
-MinisatMgr::MinisatMgr() {}
+MinisatMgr::MinisatMgr()
+    : _solver(nullptr),
+      _solver_dimacs(nullptr),
+      _curVar(0),
+      _ntkData(nullptr),
+      _cirMgr(nullptr) {}
 
 MinisatMgr::MinisatMgr(CirMgr* cirMgr) : SatSolverMgr(cirMgr), _cirMgr(cirMgr) {
     _solver        = new SolverV();
+    _solver_dimacs = nullptr;
     _solver->proof = new Proof();
     _assump.clear();
     _curVar = 0;
@@ -38,13 +45,18 @@ MinisatMgr::MinisatMgr(CirMgr* cirMgr) : SatSolverMgr(cirMgr), _cirMgr(cirMgr) {
 MinisatMgr::~MinisatMgr() {
     delete _solver;
     assumeRelease();
-    for (uint32_t i = 0; i < _cirMgr->getNumTots(); ++i) _ntkData[i].clear();
+    if (_cirMgr && _ntkData)
+        for (uint32_t i = 0; i < _cirMgr->getNumTots(); ++i) _ntkData[i].clear();
     delete[] _ntkData;
+    delete _solver_dimacs;
 }
 
 void MinisatMgr::reset() {
     delete _solver;
+    delete _solver_dimacs;
+    delete[] _ntkData;
     _solver        = new SolverV();
+    _solver_dimacs = nullptr;
     _solver->proof = new Proof();
     _assump.clear();
     _curVar = 0;
@@ -263,7 +275,8 @@ const bool MinisatMgr::existVerifyData(const CirGate* gate, const uint32_t& dept
     return getVerifyData(gate, depth);
 }
 
-void MinisatMgr::solve_dimacs_cnf(const string& filename) {
+void MinisatMgr::solve_dimacs_cnf(const string& filename, int64_t conflictLimit) {
+    delete _solver_dimacs;
     _solver_dimacs = new SolverV();
 
     fstream file;
@@ -271,10 +284,10 @@ void MinisatMgr::solve_dimacs_cnf(const string& filename) {
 
     string p;
     string cnf;
-    int nVars, nClauses;
+    int nVars = 0, nClauses = 0;
     string line;
-    getline(file,line);
-    while (line[0] == 'c') {
+    getline(file, line);
+    while (!line.empty() && line[0] == 'c') {
         getline(file, line);
     }
     if (file.eof()) {
@@ -287,10 +300,10 @@ void MinisatMgr::solve_dimacs_cnf(const string& filename) {
     for (int i = 0; i < nVars; ++i) {
         _solver_dimacs->newVar();
     }
-    
+
     for (int i = 0; i < nClauses; ++i) {
         getline(file, line);
-        if (line[0] == 'c') {
+        if (line.empty() || line[0] == 'c') {
             --i;
             continue;
         }
@@ -305,8 +318,14 @@ void MinisatMgr::solve_dimacs_cnf(const string& filename) {
         _solver_dimacs->addClause(lits);
     }
     _solver_dimacs->verbosity = 1;
-    bool result = _solver_dimacs->solve();
-    if (result) {
+    gvlbool result;
+    if (conflictLimit >= 0) {
+        result = _solver_dimacs->solveLimited(vec<Lit>(), conflictLimit);
+    } else {
+        result = _solver_dimacs->solve() ? gv_l_True : gv_l_False;
+    }
+
+    if (result == gv_l_True) {
         cout << "SAT" << endl;
         for (int i = 0; i < nVars; ++i) {
             if (_solver_dimacs->model[i] == gv_l_True)
@@ -314,7 +333,9 @@ void MinisatMgr::solve_dimacs_cnf(const string& filename) {
             else
                 cout << -(i + 1) << " ";
         }
-    } else {
+    } else if (result == gv_l_False) {
         cout << "UNSAT";
+    } else {
+        cout << "UNKNOWN";
     }
 }

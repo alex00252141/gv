@@ -28,27 +28,51 @@ GVCmdExecStatus SatSolveDimacCmd::exec(const string& option) {
     vector<string> options;
     GVCmdExec::lexOptions(option, options);
 
-    if (options.size() < 2) return GVCmdExec::errorOption(GV_CMD_OPT_MISSING, "");
-    if (options.size() > 2) return GVCmdExec::errorOption(GV_CMD_OPT_EXTRA, options[2]);
+    if (options.empty()) return GVCmdExec::errorOption(GV_CMD_OPT_MISSING, "-File");
 
-    if (myStrNCmp("-File", options[0], 2) != 0)
-        return GVCmdExec::errorOption(GV_CMD_OPT_ILLEGAL, options[0]);
+    string filename;
+    int  conflictLimit = -1;
+    bool fileSet       = false;
+    bool limitSet      = false;
 
-    string filename = options[1];
+    for (size_t i = 0; i < options.size(); ++i) {
+        const string& token = options[i];
+        if (checkOptionToken(token, "-File", 2)) {
+            if (fileSet) return GVCmdExec::errorOption(GV_CMD_OPT_EXTRA, token);
+            if (++i >= options.size()) return GVCmdExec::errorOption(GV_CMD_OPT_MISSING, token);
+            filename = options[i];
+            fileSet  = true;
+            continue;
+        }
+        if (checkOptionToken(token, "-ConflictMax", 2)) {
+            if (limitSet) return GVCmdExec::errorOption(GV_CMD_OPT_EXTRA, token);
+            if (++i >= options.size()) return GVCmdExec::errorOption(GV_CMD_OPT_MISSING, token);
+            if (!myStr2Int(options[i], conflictLimit) || conflictLimit < 0)
+                return GVCmdExec::errorOption(GV_CMD_OPT_ILLEGAL, options[i]);
+            limitSet = true;
+            continue;
+        }
+        return GVCmdExec::errorOption(GV_CMD_OPT_ILLEGAL, token);
+    }
+
+    if (!fileSet) return GVCmdExec::errorOption(GV_CMD_OPT_MISSING, "-File");
+
     ifstream file(filename);
     if (!file.is_open()) {
         gvMsg(GV_MSG_ERR) << "File " << filename << " does NOT Exist !!" << endl;
-        return GVCmdExec::errorOption(GV_CMD_OPT_ILLEGAL, options[1]);
+        return GVCmdExec::errorOption(GV_CMD_OPT_ILLEGAL, filename);
     }
+    file.close();
 
-    SatSolverMgr *gvSatSolver = new gv::sat::MinisatMgr();
-    gvSatSolver->solve_dimacs_cnf(filename);
+    MinisatMgr gvSatSolver;
+    gvSatSolver.solve_dimacs_cnf(filename, conflictLimit);
 
     return GV_CMD_EXEC_DONE;
 }
 
 void SatSolveDimacCmd::usage(const bool& verbose) const {
-    gvMsg(GV_MSG_IFO) << "Usage: SATSolve DIMACS <-File <string(dimacsFormatFileName)> >" << endl;
+    gvMsg(GV_MSG_IFO) << "Usage: SATSolve DIMACS <-File <string(dimacsFormatFileName)> > "
+                      << "[-ConflictMax <non-negative integer>]" << endl;
 }
 
 void SatSolveDimacCmd::help() const {
