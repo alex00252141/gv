@@ -72,7 +72,7 @@ public:
     int nVars() { return _solver->nVars(); };
     const Var getVerifyData(const gv::cir::CirGate*, const uint32_t&) const;
 
-    void solve_dimacs_cnf(const string& filename);
+    void solve_dimacs_cnf(const string& filename, bool printStats = false);
 
 private:
     const Var newVar();

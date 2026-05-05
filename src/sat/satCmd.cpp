@@ -29,10 +29,13 @@ GVCmdExecStatus SatSolveDimacCmd::exec(const string& option) {
     GVCmdExec::lexOptions(option, options);
 
     if (options.size() < 2) return GVCmdExec::errorOption(GV_CMD_OPT_MISSING, "");
-    if (options.size() > 2) return GVCmdExec::errorOption(GV_CMD_OPT_EXTRA, options[2]);
+    if (options.size() > 3) return GVCmdExec::errorOption(GV_CMD_OPT_EXTRA, options[3]);
 
     if (myStrNCmp("-File", options[0], 2) != 0)
         return GVCmdExec::errorOption(GV_CMD_OPT_ILLEGAL, options[0]);
+    const bool printStats = options.size() == 3;
+    if (printStats && myStrNCmp("-Stats", options[2], 2) != 0)
+        return GVCmdExec::errorOption(GV_CMD_OPT_ILLEGAL, options[2]);
 
     string filename = options[1];
     ifstream file(filename);
@@ -42,13 +45,13 @@ GVCmdExecStatus SatSolveDimacCmd::exec(const string& option) {
     }
 
     SatSolverMgr *gvSatSolver = new gv::sat::MinisatMgr();
-    gvSatSolver->solve_dimacs_cnf(filename);
+    gvSatSolver->solve_dimacs_cnf(filename, printStats);
 
     return GV_CMD_EXEC_DONE;
 }
 
 void SatSolveDimacCmd::usage(const bool& verbose) const {
-    gvMsg(GV_MSG_IFO) << "Usage: SATSolve DIMACS <-File <string(dimacsFormatFileName)> >" << endl;
+    gvMsg(GV_MSG_IFO) << "Usage: SATSolve DIMACS <-File <string(dimacsFormatFileName)> > [<-Stats>]" << endl;
 }
 
 void SatSolveDimacCmd::help() const {
