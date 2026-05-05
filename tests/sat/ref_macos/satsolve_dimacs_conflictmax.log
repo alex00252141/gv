@@ -1,4 +1,8 @@
 setup> satsolve dimacs -file ./testbench/dimacs_unsat.txt -conflictmax 0
+==================================[MINISAT]===================================
+| Conflicts |     ORIGINAL     |              LEARNT              | Progress |
+|           | Clauses Literals |   Limit Clauses Literals  Lit/Cl |          |
+==============================================================================
 UNKNOWN
 setup> q -f
 
