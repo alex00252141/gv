@@ -54,7 +54,7 @@ public:
     virtual int nVars() { return 0; };
     virtual const GVBitVecX getDataValue(const gv::cir::CirGate* gate, const uint32_t& depth) const { return GVBitVecX(); };
     virtual const Var getVerifyData(const gv::cir::CirGate*, const uint32_t&) const {};
-    virtual void solve_dimacs_cnf(const string& filename) {};
+    virtual void solve_dimacs_cnf(const string& filename, bool printStats = false) {};
 
 private:
     gv::cir::CirMgr* _cirMgr;

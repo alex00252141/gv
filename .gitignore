@@ -61,4 +61,6 @@ gv
 debug.dofile
 
 # Examples for SoCV class
-examples/
+examples/*
+!examples/sat/
+!examples/sat/**

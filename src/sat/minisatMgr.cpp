@@ -263,7 +263,7 @@ const bool MinisatMgr::existVerifyData(const CirGate* gate, const uint32_t& dept
     return getVerifyData(gate, depth);
 }
 
-void MinisatMgr::solve_dimacs_cnf(const string& filename) {
+void MinisatMgr::solve_dimacs_cnf(const string& filename, bool printStats) {
     _solver_dimacs = new SolverV();
 
     fstream file;
@@ -306,6 +306,18 @@ void MinisatMgr::solve_dimacs_cnf(const string& filename) {
     }
     _solver_dimacs->verbosity = 1;
     bool result = _solver_dimacs->solve();
+    if (printStats) {
+        cout << endl
+             << "SATStats "
+             << "starts=" << _solver_dimacs->stats.starts << " "
+             << "decisions=" << _solver_dimacs->stats.decisions << " "
+             << "conflicts=" << _solver_dimacs->stats.conflicts << " "
+             << "propagations=" << _solver_dimacs->stats.propagations << " "
+             << "solver_clauses=" << _solver_dimacs->nClauses() << " "
+             << "learnts=" << _solver_dimacs->nLearnts() << " "
+             << "clause_literals=" << _solver_dimacs->stats.clauses_literals << " "
+             << "learnt_literals=" << _solver_dimacs->stats.learnts_literals << endl;
+    }
     if (result) {
         cout << "SAT" << endl;
         for (int i = 0; i < nVars; ++i) {
